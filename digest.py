@@ -214,23 +214,33 @@ class DigestBuilder:
             log.warning("No GEMINI_API_KEY set, using fallback")
             return self._fallback_html(posts)
 
-        try:
-            response = self._client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=prompt,
-            )
-            text = response.text.strip()
-            # Strip markdown code fences if present
-            if text.startswith("```html"):
-                text = text[7:]
-            if text.startswith("```"):
-                text = text[3:]
-            if text.endswith("```"):
-                text = text[:-3]
-            return text.strip()
-        except Exception as e:
-            log.error(f"Gemini summarization failed: {e}")
+        models = ["gemini-3-flash-preview", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
+        for model in models:
+            for attempt in range(3):
+                try:
+                    log.info(f"Trying {model} (attempt {attempt + 1})")
+                    response = self._client.models.generate_content(
+                        model=model,
+                        contents=prompt,
+                    )
+                    text = response.text.strip()
+                    if text.startswith("```html"):
+                        text = text[7:]
+                    if text.startswith("```"):
+                        text = text[3:]
+                    if text.endswith("```"):
+                        text = text[:-3]
+                    return text.strip()
+                except Exception as e:
+                    if "429" in str(e):
+                        wait = 20 * (attempt + 1)
+                        log.warning(f"{model} rate limited, waiting {wait}s...")
+                        time.sleep(wait)
+                    else:
+                        log.error(f"{model} failed: {e}")
+                        break  # Try next model
 
+        log.error("All Gemini models exhausted, using fallback")
         return self._fallback_html(posts)
 
     def _fallback_html(self, posts: list[Post]) -> str:
