@@ -279,9 +279,23 @@
   }
 
   .subscribe-btn:disabled {
-    opacity: 0.5;
+    opacity: 0.7;
     cursor: not-allowed;
     transform: none;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--bg);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 
   .subscribe-note {
@@ -677,7 +691,7 @@ document.getElementById('subscribe-form').addEventListener('submit', async (e) =
   if (!email) return;
 
   btn.disabled = true;
-  btn.textContent = '...';
+  btn.innerHTML = '<span class="spinner"></span>';
 
   try {
     const resp = await fetch('/api/subscribe', {
@@ -700,7 +714,7 @@ document.getElementById('subscribe-form').addEventListener('submit', async (e) =
   }
 
   btn.disabled = false;
-  btn.textContent = 'Subscribe';
+  btn.innerHTML = 'Subscribe';
 });
 </script>
 </body>
