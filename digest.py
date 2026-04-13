@@ -385,6 +385,7 @@ _scraper = None
 _builder = None
 _mailer = None
 _inkbox_client = None
+_latest_digest_html = None  # cached latest digest for new subscribers
 
 
 class SubscribeRequest(BaseModel):
@@ -393,24 +394,31 @@ class SubscribeRequest(BaseModel):
 
 def _digest_timer(store, scraper, builder, mailer, interval):
     """Background thread: send digests on schedule. No polling."""
+    global _latest_digest_html
     while True:
         time.sleep(interval)
         try:
             subscribers = store.get_active()
-            if subscribers:
-                posts = scraper.scrape()
-                if posts:
-                    html = builder.build(posts)
-                    if html:
+            posts = scraper.scrape()
+            if posts:
+                html = builder.build(posts)
+                if html:
+                    _latest_digest_html = html
+                    if subscribers:
                         mailer.send(subscribers, html)
-                        scraper.mark_sent(posts)
                         log.info(f"Digest sent to {len(subscribers)} subscribers")
-                else:
-                    log.info("No new posts")
+                    scraper.mark_sent(posts)
             else:
-                log.info("No active subscribers")
+                log.info("No new posts")
         except Exception as e:
             log.error(f"Digest error: {e}", exc_info=True)
+
+
+def _send_latest_digest(email: str):
+    """Send the cached latest digest to a new subscriber."""
+    if _latest_digest_html and _mailer:
+        _mailer.send([email], _latest_digest_html)
+        log.info(f"Sent latest digest to new subscriber: {email}")
 
 
 def _handle_inbound_email(sender: str, subject: str, snippet: str, message_id: str):
@@ -444,6 +452,7 @@ def _handle_inbound_email(sender: str, subject: str, snippet: str, message_id: s
             ),
         )
         log.info(f"Webhook subscribe: {sender}")
+        _send_latest_digest(sender)
     else:
         if not _store.is_subscribed(sender):
             _store.add(sender)
@@ -457,6 +466,7 @@ def _handle_inbound_email(sender: str, subject: str, snippet: str, message_id: s
                 ),
             )
             log.info(f"Webhook auto-subscribe: {sender}")
+            _send_latest_digest(sender)
 
 
 def _register_webhook(identity, base_url, api_key, webhook_url):
@@ -477,7 +487,7 @@ def _register_webhook(identity, base_url, api_key, webhook_url):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _identity, _store, _scraper, _builder, _mailer, _inkbox_client
+    global _identity, _store, _scraper, _builder, _mailer, _inkbox_client, _latest_digest_html
 
     api_key = os.environ["INKBOX_API_KEY"]
     identity_handle = os.environ.get("INKBOX_IDENTITY", "aidigest")
@@ -501,6 +511,16 @@ async def lifespan(app: FastAPI):
 
     # Register webhook with Inkbox
     _register_webhook(_identity, base_url, api_key, webhook_url)
+
+    # Generate initial digest so new subscribers get it immediately
+    try:
+        posts = _scraper.scrape()
+        if posts:
+            _latest_digest_html = _builder.build(posts)
+            _scraper.mark_sent(posts)
+            log.info(f"Initial digest cached ({len(posts)} posts)")
+    except Exception as e:
+        log.error(f"Initial digest failed: {e}")
 
     log.info(f"AI Digest server starting. Digest interval: {interval}s")
     log.info(f"Webhook: {webhook_url}")
@@ -579,6 +599,7 @@ async def subscribe(req: SubscribeRequest):
         log.error(f"Welcome email failed for {email}: {e}")
 
     log.info(f"Web subscribe: {email}")
+    _send_latest_digest(email)
     return JSONResponse({"status": "subscribed", "message": "Subscribed! Check your inbox."})
 
 
