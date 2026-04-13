@@ -216,7 +216,7 @@ class DigestBuilder:
 
         models = ["gemini-3-flash-preview", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
         for model in models:
-            for attempt in range(3):
+            for attempt in range(6):
                 try:
                     log.info(f"Trying {model} (attempt {attempt + 1})")
                     response = self._client.models.generate_content(
@@ -233,8 +233,8 @@ class DigestBuilder:
                     return text.strip()
                 except Exception as e:
                     if "429" in str(e):
-                        wait = 20 * (attempt + 1)
-                        log.warning(f"{model} rate limited, waiting {wait}s...")
+                        wait = min(2 ** attempt * 5, 300)  # 5s, 10s, 20s, 40s, 80s, 160s
+                        log.warning(f"{model} rate limited, retrying in {wait}s...")
                         time.sleep(wait)
                     else:
                         log.error(f"{model} failed: {e}")
