@@ -125,6 +125,21 @@ class RedditScraper:
         log.info(f"Scraped {len(new_posts)} new posts from {len(self.subreddits)} subreddits")
         return new_posts
 
+    def scrape_without_filter(self) -> list[Post]:
+        """Scrape posts ignoring the seen file — for generating digest on demand."""
+        posts = []
+        for sub in self.subreddits:
+            posts.extend(self._scrape_subreddit(sub))
+        seen_urls: set[str] = set()
+        unique: list[Post] = []
+        for p in posts:
+            if p.url not in seen_urls:
+                seen_urls.add(p.url)
+                unique.append(p)
+        unique.sort(key=lambda p: p.score, reverse=True)
+        log.info(f"Scraped {len(unique)} posts (unfiltered) from {len(self.subreddits)} subreddits")
+        return unique
+
     def mark_sent(self, posts: list[Post]):
         for p in posts:
             self._seen.add(self._post_id(p))
@@ -415,7 +430,13 @@ def _digest_timer(store, scraper, builder, mailer, interval):
 
 
 def _send_latest_digest(email: str):
-    """Send the cached latest digest to a new subscriber."""
+    """Send the latest digest to a new subscriber. Generate fresh if needed."""
+    global _latest_digest_html
+    if not _latest_digest_html and _scraper and _builder:
+        log.info("No cached digest, generating fresh one for new subscriber...")
+        posts = _scraper.scrape_without_filter()
+        if posts:
+            _latest_digest_html = _builder.build(posts)
     if _latest_digest_html and _mailer:
         _mailer.send([email], _latest_digest_html)
         log.info(f"Sent latest digest to new subscriber: {email}")
@@ -514,10 +535,9 @@ async def lifespan(app: FastAPI):
 
     # Generate initial digest so new subscribers get it immediately
     try:
-        posts = _scraper.scrape()
+        posts = _scraper.scrape_without_filter()
         if posts:
             _latest_digest_html = _builder.build(posts)
-            _scraper.mark_sent(posts)
             log.info(f"Initial digest cached ({len(posts)} posts)")
     except Exception as e:
         log.error(f"Initial digest failed: {e}")
