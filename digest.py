@@ -367,41 +367,35 @@ class DigestMailer:
 
 
 # ---------------------------------------------------------------------------
-# FastAPI Server + Background Digest Loop
+# FastAPI Server + Webhook + Background Digest Timer
 # ---------------------------------------------------------------------------
 
 import threading
 from contextlib import asynccontextmanager
 from pathlib import Path as _Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, EmailStr
 
-# Shared state — initialized in lifespan
+# Shared state
 _identity = None
 _store = None
 _scraper = None
 _builder = None
 _mailer = None
-_inbox = None
+_inkbox_client = None
 
 
 class SubscribeRequest(BaseModel):
     email: EmailStr
 
 
-def _digest_loop(identity, store, scraper, builder, mailer, inbox, interval):
-    """Background thread: poll inbox + send digests on schedule."""
-    last_digest = 0
+def _digest_timer(store, scraper, builder, mailer, interval):
+    """Background thread: send digests on schedule. No polling."""
     while True:
+        time.sleep(interval)
         try:
-            inbox.process_inbox()
-        except Exception as e:
-            log.error(f"Inbox error: {e}")
-
-        now = time.time()
-        if now - last_digest >= interval:
             subscribers = store.get_active()
             if subscribers:
                 posts = scraper.scrape()
@@ -415,49 +409,113 @@ def _digest_loop(identity, store, scraper, builder, mailer, inbox, interval):
                     log.info("No new posts")
             else:
                 log.info("No active subscribers")
-            last_digest = now
+        except Exception as e:
+            log.error(f"Digest error: {e}", exc_info=True)
 
-        time.sleep(30)
+
+def _handle_inbound_email(sender: str, subject: str, snippet: str, message_id: str):
+    """Process an inbound email via webhook — subscribe/unsubscribe."""
+    sender = sender.lower()
+    text = f"{subject} {snippet}".strip()
+
+    unsub_patterns = [r"(?i)^stop", r"(?i)^unsubscribe", r"(?i)^cancel", r"(?i)^remove.?me"]
+    sub_patterns = [r"(?i)^subscribe", r"(?i)^sign.?me.?up", r"(?i)^start", r"(?i)^yes"]
+
+    if any(re.match(p, text) for p in unsub_patterns):
+        _store.remove(sender)
+        _identity.send_email(
+            to=[sender],
+            subject="Unsubscribed from AI Digest",
+            body_html=(
+                "<p>You've been unsubscribed. No more digests.</p>"
+                "<p>Reply <b>subscribe</b> anytime to rejoin.</p>"
+            ),
+        )
+        log.info(f"Webhook unsubscribe: {sender}")
+    elif any(re.match(p, text) for p in sub_patterns):
+        _store.add(sender)
+        _identity.send_email(
+            to=[sender],
+            subject="Subscribed to AI Digest!",
+            body_html=(
+                "<p>You're in! You'll get a daily AI news digest curated from Reddit.</p>"
+                "<p>Sources: r/LocalLLaMA, r/MachineLearning, r/artificial, r/singularity, r/ClaudeAI, r/StableDiffusion</p>"
+                "<p>Reply <b>stop</b> anytime to unsubscribe.</p>"
+            ),
+        )
+        log.info(f"Webhook subscribe: {sender}")
+    else:
+        if not _store.is_subscribed(sender):
+            _store.add(sender)
+            _identity.send_email(
+                to=[sender],
+                subject="Welcome to AI Digest!",
+                body_html=(
+                    "<p>You've been subscribed to the daily AI news digest.</p>"
+                    "<p>Every day you'll get the top AI posts from Reddit, curated and summarized.</p>"
+                    "<p>Reply <b>stop</b> anytime to unsubscribe.</p>"
+                ),
+            )
+            log.info(f"Webhook auto-subscribe: {sender}")
+
+
+def _register_webhook(identity, base_url, api_key, webhook_url):
+    """Register webhook URL on the mailbox so Inkbox POSTs on inbound email."""
+    email_address = identity.email_address
+    try:
+        import httpx as _httpx
+        resp = _httpx.patch(
+            f"{base_url}/api/v1/mail/mailboxes/{email_address}",
+            headers={"X-API-Key": api_key, "Content-Type": "application/json"},
+            json={"webhook_url": webhook_url},
+        )
+        resp.raise_for_status()
+        log.info(f"Webhook registered: {webhook_url}")
+    except Exception as e:
+        log.error(f"Failed to register webhook: {e}")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _identity, _store, _scraper, _builder, _mailer, _inbox
+    global _identity, _store, _scraper, _builder, _mailer, _inkbox_client
 
     api_key = os.environ["INKBOX_API_KEY"]
     identity_handle = os.environ.get("INKBOX_IDENTITY", "aidigest")
     base_url = os.environ.get("INKBOX_BASE_URL", "https://inkbox.ai")
     subreddits = [s.strip() for s in os.environ.get("SUBREDDITS", "LocalLLaMA,MachineLearning").split(",")]
     min_score = int(os.environ.get("MIN_SCORE", "50"))
-    interval = int(os.environ.get("DIGEST_INTERVAL", "21600"))
+    interval = int(os.environ.get("DIGEST_INTERVAL", "86400"))
     seed_subscribers = [s.strip() for s in os.environ.get("SEED_SUBSCRIBERS", "").split(",") if s.strip()]
+    webhook_url = os.environ.get("WEBHOOK_URL", "https://aidigest.fly.dev/webhook/email")
 
-    inkbox_client = Inkbox(api_key=api_key, base_url=base_url)
-    _identity = inkbox_client.get_identity(identity_handle)
+    _inkbox_client = Inkbox(api_key=api_key, base_url=base_url)
+    _identity = _inkbox_client.get_identity(identity_handle)
     _store = SubscriberStore()
     _scraper = RedditScraper(subreddits, min_score)
     _builder = DigestBuilder()
     _mailer = DigestMailer(_identity)
-    _inbox = InboxHandler(_identity, _store)
 
     for email in seed_subscribers:
         if not _store.is_subscribed(email):
             _store.add(email)
 
+    # Register webhook with Inkbox
+    _register_webhook(_identity, base_url, api_key, webhook_url)
+
     log.info(f"AI Digest server starting. Digest interval: {interval}s")
-    log.info(f"Subreddits: {', '.join(subreddits)}")
+    log.info(f"Webhook: {webhook_url}")
     log.info(f"Active subscribers: {_store.count()}")
 
-    # Start background digest loop
+    # Background thread for scheduled digests only (no polling)
     t = threading.Thread(
-        target=_digest_loop,
-        args=(_identity, _store, _scraper, _builder, _mailer, _inbox, interval),
+        target=_digest_timer,
+        args=(_store, _scraper, _builder, _mailer, interval),
         daemon=True,
     )
     t.start()
 
     yield
-    inkbox_client.close()
+    _inkbox_client.close()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -470,6 +528,30 @@ async def index():
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.post("/webhook/email")
+async def email_webhook(request: Request):
+    """Inkbox POSTs here on every inbound email. No polling needed."""
+    body = await request.json()
+    sender = body.get("from_address", body.get("from", ""))
+    subject = body.get("subject", "")
+    snippet = body.get("snippet", body.get("body_text", ""))
+    message_id = body.get("id", body.get("message_id", ""))
+    direction = body.get("direction", "inbound")
+
+    if direction != "inbound" or not sender:
+        return {"ok": True}
+
+    # Mark as read
+    try:
+        if message_id:
+            _identity.mark_emails_read([message_id])
+    except Exception:
+        pass
+
+    _handle_inbound_email(sender, subject, snippet, message_id)
+    return {"ok": True}
+
+
 @app.post("/api/subscribe")
 async def subscribe(req: SubscribeRequest):
     email = req.email.lower()
@@ -478,7 +560,6 @@ async def subscribe(req: SubscribeRequest):
 
     _store.add(email)
 
-    # Send welcome email
     try:
         _identity.send_email(
             to=[email],
@@ -487,7 +568,7 @@ async def subscribe(req: SubscribeRequest):
                 "<div style='font-family: -apple-system, sans-serif; max-width: 600px;'>"
                 "<h1 style='color: #00bbff;'>Welcome to AI Digest</h1>"
                 "<p>You'll get a daily curated digest of the top AI posts from Reddit, "
-                "summarized by Claude.</p>"
+                "summarized by Gemini.</p>"
                 "<p><b>Sources:</b> r/LocalLLaMA, r/MachineLearning, r/artificial, "
                 "r/singularity, r/ClaudeAI, r/StableDiffusion</p>"
                 "<p>Reply <b>stop</b> anytime to unsubscribe.</p>"
