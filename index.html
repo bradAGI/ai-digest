@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Digest — Daily AI News, Curated</title>
+<meta name="description" content="AI news from Reddit, summarized by Claude, delivered to your inbox. No doomscrolling required.">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #141420;
+    --bg-elevated: #1c1c2e;
+    --bg-card: #222236;
+    --cyan: #00bbff;
+    --cyan-dim: #00bbff33;
+    --cyan-glow: #00bbff66;
+    --green: #00ff88;
+    --green-dim: #00ff8833;
+    --text: #f0f0f5;
+    --text-dim: #8888a0;
+    --text-muted: #555570;
+    --border: #2a2a40;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Scan line overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Noise texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9998;
+  }
+
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ---- NAV ---- */
+  nav {
+    padding: 24px 0;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  nav .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--cyan);
+    letter-spacing: -0.5px;
+  }
+
+  .logo span { color: var(--text-dim); }
+
+  .nav-email {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  /* ---- HERO ---- */
+  .hero {
+    padding: 80px 0 60px;
+    position: relative;
+  }
+
+  .terminal-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .terminal-label::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: clamp(32px, 6vw, 56px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -2px;
+    margin-bottom: 24px;
+  }
+
+  h1 .highlight {
+    color: var(--cyan);
+    text-shadow: 0 0 40px var(--cyan-dim);
+  }
+
+  .hero-description {
+    font-size: 18px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    max-width: 560px;
+    font-weight: 300;
+  }
+
+  .hero-description strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* ---- SUBSCRIBE CTA ---- */
+  .cta-section {
+    padding: 40px 0 60px;
+  }
+
+  .terminal-box {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .terminal-header {
+    padding: 10px 16px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .terminal-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-muted);
+  }
+
+  .terminal-dot:first-child { background: #ff5f56; }
+  .terminal-dot:nth-child(2) { background: #ffbd2e; }
+  .terminal-dot:nth-child(3) { background: #27c93f; }
+
+  .terminal-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-left: 8px;
+  }
+
+  .terminal-body {
+    padding: 24px;
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 2;
+  }
+
+  .terminal-line {
+    opacity: 0;
+    animation: type-in 0.3s ease forwards;
+  }
+
+  .terminal-line:nth-child(1) { animation-delay: 0.2s; }
+  .terminal-line:nth-child(2) { animation-delay: 0.6s; }
+  .terminal-line:nth-child(3) { animation-delay: 1.0s; }
+  .terminal-line:nth-child(4) { animation-delay: 1.4s; }
+  .terminal-line:nth-child(5) { animation-delay: 1.8s; }
+  .terminal-line:nth-child(6) { animation-delay: 2.2s; }
+
+  @keyframes type-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .prompt { color: var(--green); }
+  .flag { color: var(--cyan); }
+  .comment { color: var(--text-muted); }
+  .output { color: var(--text-dim); }
+  .success { color: var(--green); }
+
+  .subscribe-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 24px;
+    max-width: 480px;
+  }
+
+  .subscribe-form input {
+    flex: 1;
+    padding: 14px 18px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .subscribe-form input:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 12px var(--cyan-dim);
+  }
+
+  .subscribe-form input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .subscribe-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 28px;
+    background: var(--cyan);
+    color: var(--bg);
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  .subscribe-btn:hover {
+    background: #fff;
+    box-shadow: 0 0 30px var(--cyan-glow);
+    transform: translateY(-1px);
+  }
+
+  .subscribe-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .subscribe-note {
+    margin-top: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .subscribe-note.success { color: var(--green); }
+  .subscribe-note.error { color: #ff5f56; }
+
+  /* ---- SOURCES ---- */
+  .sources {
+    padding: 60px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 32px;
+  }
+
+  .source-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+
+  .source-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .source-card:hover {
+    border-color: var(--cyan-dim);
+    background: var(--bg-card);
+  }
+
+  .source-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--cyan);
+    flex-shrink: 0;
+    animation: pulse-dot 3s ease-in-out infinite;
+  }
+
+  .source-card:nth-child(2) .source-indicator { animation-delay: 0.5s; }
+  .source-card:nth-child(3) .source-indicator { animation-delay: 1.0s; }
+  .source-card:nth-child(4) .source-indicator { animation-delay: 1.5s; }
+  .source-card:nth-child(5) .source-indicator { animation-delay: 2.0s; }
+  .source-card:nth-child(6) .source-indicator { animation-delay: 2.5s; }
+
+  .source-name { color: var(--text); }
+  .source-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-left: auto;
+  }
+
+  /* ---- HOW IT WORKS ---- */
+  .how-it-works {
+    padding: 60px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 20px;
+    padding: 24px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .step:last-child { border-bottom: none; }
+
+  .step-number {
+    font-family: var(--mono);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-muted);
+    line-height: 1;
+  }
+
+  .step-content h3 {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+
+  .step-content p {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .step-content .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--cyan-dim);
+    color: var(--cyan);
+    font-family: var(--mono);
+    font-size: 11px;
+    border-radius: 3px;
+    margin-top: 8px;
+  }
+
+  /* ---- SAMPLE DIGEST ---- */
+  .sample {
+    padding: 60px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .sample-digest {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 32px;
+  }
+
+  .sample-digest h3 {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--cyan);
+    margin-top: 24px;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sample-digest h3:first-child { margin-top: 0; }
+
+  .sample-item {
+    padding: 8px 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .sample-item .title {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .sample-item .meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .sample-item .summary {
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+
+  /* ---- FOOTER ---- */
+  footer {
+    padding: 40px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .footer-left {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 24px;
+  }
+
+  .footer-links a {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover { color: var(--cyan); }
+
+  /* ---- RESPONSIVE ---- */
+  @media (max-width: 600px) {
+    .hero { padding: 48px 0 40px; }
+    .source-grid { grid-template-columns: 1fr; }
+    .step { grid-template-columns: 36px 1fr; gap: 12px; }
+    .step-number { font-size: 24px; }
+    .footer-content { flex-direction: column; align-items: flex-start; }
+    .sample-digest { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <div class="logo">ai<span>.</span>digest</div>
+    <div class="nav-email">aidigest@inkboxmail.com</div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <div class="terminal-label">live agent</div>
+    <h1>AI news.<br>Not <span class="highlight">noise</span>.</h1>
+    <p class="hero-description">
+      We scrape <strong>6 AI subreddits</strong> daily, filter out the noise,
+      and have <strong>Claude</strong> summarize what actually matters.
+      Delivered to your inbox. No doomscrolling required.
+    </p>
+  </div>
+</section>
+
+<section class="cta-section">
+  <div class="container">
+    <div class="terminal-box">
+      <div class="terminal-header">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <span class="terminal-title">ai-digest — subscribe</span>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-line"><span class="prompt">$</span> ai-digest <span class="flag">--subscribe</span></div>
+        <div class="terminal-line"><span class="output">Scanning r/LocalLLaMA, r/MachineLearning, r/artificial...</span></div>
+        <div class="terminal-line"><span class="output">Found 37 posts. Filtering noise...</span></div>
+        <div class="terminal-line"><span class="output">Summarizing top 12 with Claude...</span></div>
+        <div class="terminal-line"><span class="success">&#10003; Digest ready. Delivering to inbox.</span></div>
+        <div class="terminal-line"><span class="comment"># email aidigest@inkboxmail.com to subscribe</span></div>
+      </div>
+    </div>
+
+    <form id="subscribe-form" class="subscribe-form">
+      <input type="email" id="email-input" placeholder="you@email.com" required autocomplete="email">
+      <button type="submit" class="subscribe-btn">Subscribe</button>
+    </form>
+    <p class="subscribe-note" id="subscribe-status">Free. Daily. Reply "stop" anytime to unsubscribe.</p>
+  </div>
+</section>
+
+<section class="sources">
+  <div class="container">
+    <div class="section-label">Sources</div>
+    <div class="source-grid">
+      <div class="source-card">
+        <div class="source-indicator"></div>
+        <span class="source-name">r/LocalLLaMA</span>
+        <span class="source-desc">models</span>
+      </div>
+      <div class="source-card">
+        <div class="source-indicator"></div>
+        <span class="source-name">r/MachineLearning</span>
+        <span class="source-desc">research</span>
+      </div>
+      <div class="source-card">
+        <div class="source-indicator"></div>
+        <span class="source-name">r/artificial</span>
+        <span class="source-desc">news</span>
+      </div>
+      <div class="source-card">
+        <div class="source-indicator"></div>
+        <span class="source-name">r/singularity</span>
+        <span class="source-desc">frontier</span>
+      </div>
+      <div class="source-card">
+        <div class="source-indicator"></div>
+        <span class="source-name">r/ClaudeAI</span>
+        <span class="source-desc">anthropic</span>
+      </div>
+      <div class="source-card">
+        <div class="source-indicator"></div>
+        <span class="source-name">r/StableDiffusion</span>
+        <span class="source-desc">image gen</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="how-it-works">
+  <div class="container">
+    <div class="section-label">How it works</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">01</div>
+        <div class="step-content">
+          <h3>Scrape</h3>
+          <p>Every 6 hours, we pull the top posts from 6 AI subreddits. Filter out memes, reposts, and low-effort content.</p>
+          <span class="tag">automated</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">02</div>
+        <div class="step-content">
+          <h3>Summarize</h3>
+          <p>Claude reads every post, ranks by importance, groups by category, and writes concise summaries you can scan in 2 minutes.</p>
+          <span class="tag">claude</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">03</div>
+        <div class="step-content">
+          <h3>Deliver</h3>
+          <p>A clean, formatted digest lands in your inbox. Links to every source. Read it on your phone over coffee.</p>
+          <span class="tag">inkbox</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sample">
+  <div class="container">
+    <div class="section-label">Sample digest</div>
+    <div class="sample-digest">
+      <h3>Models &amp; Releases</h3>
+      <div class="sample-item">
+        <div class="title">Llama 4 Scout beats GPT-4o on coding benchmarks</div>
+        <div class="meta">r/LocalLLaMA &middot; 2.4k pts</div>
+        <div class="summary">New 17B model runs on consumer GPUs with 10M context window. GGUF quantizations already available on HuggingFace.</div>
+      </div>
+      <div class="sample-item">
+        <div class="title">Mistral releases Codestral 2 under Apache 2.0</div>
+        <div class="meta">r/MachineLearning &middot; 1.8k pts</div>
+        <div class="summary">Open-weight code model outperforms previous generation by 23% on HumanEval. Full fine-tuning supported.</div>
+      </div>
+
+      <h3>Research &amp; Papers</h3>
+      <div class="sample-item">
+        <div class="title">New attention mechanism replaces softmax, 40% faster inference</div>
+        <div class="meta">r/MachineLearning &middot; 3.1k pts</div>
+        <div class="summary">Follow-up paper from original Transformer authors proposes linear attention variant with comparable quality.</div>
+      </div>
+
+      <h3>Tools &amp; Libraries</h3>
+      <div class="sample-item">
+        <div class="title">llama.cpp adds speculative decoding — 2x inference speed</div>
+        <div class="meta">r/LocalLLaMA &middot; 890 pts</div>
+        <div class="summary">Latest release supports draft models for speculative decoding on all GGUF quantizations.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-content">
+      <div class="footer-left">Scraped from Reddit. Summarized by Claude. Delivered by Inkbox.</div>
+      <div class="footer-links">
+        <a href="mailto:aidigest@inkboxmail.com?subject=subscribe&body=Subscribe%20me%20to%20AI%20Digest">subscribe</a>
+        <a href="mailto:aidigest@inkboxmail.com?subject=stop">unsubscribe</a>
+        <a href="https://github.com/bradAGI/the-factory">github</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+document.getElementById('subscribe-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button');
+  const input = document.getElementById('email-input');
+  const status = document.getElementById('subscribe-status');
+  const email = input.value.trim();
+  if (!email) return;
+
+  btn.disabled = true;
+  btn.textContent = '...';
+
+  try {
+    const resp = await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      status.textContent = '✓ Subscribed! Check your inbox for a welcome email.';
+      status.className = 'subscribe-note success';
+      input.value = '';
+    } else {
+      status.textContent = data.detail || 'Something went wrong.';
+      status.className = 'subscribe-note error';
+    }
+  } catch {
+    status.textContent = 'Connection error. Try again.';
+    status.className = 'subscribe-note error';
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Subscribe';
+});
+</script>
+</body>
+</html>

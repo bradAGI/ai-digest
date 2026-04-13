@@ -1,0 +1,5 @@
+inkbox
+httpx
+google-genai
+fastapi[standard]
+uvicorn
