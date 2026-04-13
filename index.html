@@ -4,22 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Digest — Daily AI News, Curated</title>
-<meta name="description" content="AI news from Reddit, summarized by Claude, delivered to your inbox. No doomscrolling required.">
+<meta name="description" content="AI news from Reddit, summarized by AI, delivered to your inbox daily. No doomscrolling required.">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #141420;
-    --bg-elevated: #1c1c2e;
-    --bg-card: #222236;
-    --cyan: #00bbff;
-    --cyan-dim: #00bbff33;
-    --cyan-glow: #00bbff66;
+    --bg: #0f1019;
+    --bg-elevated: #181825;
+    --bg-card: #1e1e30;
+    --cyan: #00ccff;
+    --cyan-dim: #00ccff22;
+    --cyan-glow: #00ccff55;
     --green: #00ff88;
-    --green-dim: #00ff8833;
+    --green-dim: #00ff8822;
     --text: #f0f0f5;
-    --text-dim: #8888a0;
+    --text-dim: #9999b0;
     --text-muted: #555570;
-    --border: #2a2a40;
+    --border: #252540;
     --mono: 'JetBrains Mono', monospace;
     --sans: 'IBM Plex Sans', sans-serif;
   }
@@ -34,43 +34,39 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Scan line overlay */
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0, 0, 0, 0.03) 2px,
-      rgba(0, 0, 0, 0.03) 4px
-    );
-    pointer-events: none;
-    z-index: 9999;
-  }
-
-  /* Noise texture */
+  /* Subtle grain */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     pointer-events: none;
     z-index: 9998;
   }
 
+  /* Gradient glow behind hero */
+  .hero-glow {
+    position: absolute;
+    top: -120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 400px;
+    background: radial-gradient(ellipse, var(--cyan-dim) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
   .container {
-    max-width: 800px;
+    max-width: 780px;
     margin: 0 auto;
     padding: 0 24px;
   }
 
   /* ---- NAV ---- */
   nav {
-    padding: 24px 0;
+    padding: 20px 0;
     border-bottom: 1px solid var(--border);
-    position: relative;
   }
 
   nav .container {
@@ -82,32 +78,39 @@
   .logo {
     font-family: var(--mono);
     font-weight: 700;
-    font-size: 16px;
+    font-size: 18px;
     color: var(--cyan);
     letter-spacing: -0.5px;
   }
 
-  .logo span { color: var(--text-dim); }
+  .logo span { color: var(--text-muted); font-weight: 400; }
 
   .nav-email {
     font-family: var(--mono);
     font-size: 12px;
-    color: var(--text-dim);
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
   }
 
   /* ---- HERO ---- */
   .hero {
-    padding: 80px 0 60px;
+    padding: 100px 0 60px;
     position: relative;
+    overflow: hidden;
   }
+
+  .hero .container { position: relative; z-index: 1; }
 
   .terminal-label {
     font-family: var(--mono);
     font-size: 11px;
-    color: var(--text-muted);
+    color: var(--green);
     text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 16px;
+    letter-spacing: 3px;
+    margin-bottom: 20px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -119,7 +122,7 @@
     height: 6px;
     border-radius: 50%;
     background: var(--green);
-    box-shadow: 0 0 8px var(--green);
+    box-shadow: 0 0 10px var(--green);
     animation: pulse-dot 2s ease-in-out infinite;
   }
 
@@ -130,23 +133,23 @@
 
   h1 {
     font-family: var(--mono);
-    font-size: clamp(32px, 6vw, 56px);
+    font-size: clamp(36px, 7vw, 64px);
     font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: -2px;
-    margin-bottom: 24px;
+    line-height: 1.05;
+    letter-spacing: -3px;
+    margin-bottom: 28px;
   }
 
   h1 .highlight {
     color: var(--cyan);
-    text-shadow: 0 0 40px var(--cyan-dim);
+    text-shadow: 0 0 60px var(--cyan-glow);
   }
 
   .hero-description {
     font-size: 18px;
-    line-height: 1.7;
+    line-height: 1.8;
     color: var(--text-dim);
-    max-width: 560px;
+    max-width: 520px;
     font-weight: 300;
   }
 
@@ -157,30 +160,114 @@
 
   /* ---- SUBSCRIBE CTA ---- */
   .cta-section {
-    padding: 40px 0 60px;
+    padding: 20px 0 70px;
+  }
+
+  .subscribe-form {
+    display: flex;
+    gap: 8px;
+    max-width: 460px;
+  }
+
+  .subscribe-form input {
+    flex: 1;
+    padding: 16px 18px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .subscribe-form input:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 20px var(--cyan-dim);
+  }
+
+  .subscribe-form input::placeholder { color: var(--text-muted); }
+
+  .subscribe-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 130px;
+    padding: 16px 28px;
+    background: var(--cyan);
+    color: var(--bg);
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  .subscribe-btn:hover {
+    background: #fff;
+    box-shadow: 0 0 40px var(--cyan-glow);
+    transform: translateY(-2px);
+  }
+
+  .subscribe-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--bg);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .subscribe-note {
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .subscribe-note.success { color: var(--green); }
+  .subscribe-note.error { color: #ff5f56; }
+
+  /* ---- TERMINAL ---- */
+  .terminal-section {
+    padding: 0 0 70px;
   }
 
   .terminal-box {
     background: var(--bg-elevated);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
     overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
   }
 
   .terminal-header {
-    padding: 10px 16px;
+    padding: 12px 16px;
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
   }
 
   .terminal-dot {
-    width: 10px;
-    height: 10px;
+    width: 11px;
+    height: 11px;
     border-radius: 50%;
-    background: var(--text-muted);
   }
 
   .terminal-dot:first-child { background: #ff5f56; }
@@ -195,10 +282,10 @@
   }
 
   .terminal-body {
-    padding: 24px;
+    padding: 24px 28px;
     font-family: var(--mono);
-    font-size: 14px;
-    line-height: 2;
+    font-size: 13px;
+    line-height: 2.2;
   }
 
   .terminal-line {
@@ -206,12 +293,11 @@
     animation: type-in 0.3s ease forwards;
   }
 
-  .terminal-line:nth-child(1) { animation-delay: 0.2s; }
-  .terminal-line:nth-child(2) { animation-delay: 0.6s; }
-  .terminal-line:nth-child(3) { animation-delay: 1.0s; }
-  .terminal-line:nth-child(4) { animation-delay: 1.4s; }
-  .terminal-line:nth-child(5) { animation-delay: 1.8s; }
-  .terminal-line:nth-child(6) { animation-delay: 2.2s; }
+  .terminal-line:nth-child(1) { animation-delay: 0.3s; }
+  .terminal-line:nth-child(2) { animation-delay: 0.8s; }
+  .terminal-line:nth-child(3) { animation-delay: 1.3s; }
+  .terminal-line:nth-child(4) { animation-delay: 1.8s; }
+  .terminal-line:nth-child(5) { animation-delay: 2.3s; }
 
   @keyframes type-in {
     from { opacity: 0; transform: translateY(4px); }
@@ -224,93 +310,9 @@
   .output { color: var(--text-dim); }
   .success { color: var(--green); }
 
-  .subscribe-form {
-    display: flex;
-    gap: 8px;
-    margin-top: 24px;
-    max-width: 480px;
-  }
-
-  .subscribe-form input {
-    flex: 1;
-    padding: 14px 18px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .subscribe-form input:focus {
-    border-color: var(--cyan);
-    box-shadow: 0 0 12px var(--cyan-dim);
-  }
-
-  .subscribe-form input::placeholder {
-    color: var(--text-muted);
-  }
-
-  .subscribe-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 28px;
-    background: var(--cyan);
-    color: var(--bg);
-    font-family: var(--mono);
-    font-size: 14px;
-    font-weight: 700;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    text-decoration: none;
-    transition: all 0.2s;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-  }
-
-  .subscribe-btn:hover {
-    background: #fff;
-    box-shadow: 0 0 30px var(--cyan-glow);
-    transform: translateY(-1px);
-  }
-
-  .subscribe-btn:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  .spinner {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border: 2px solid var(--bg);
-    border-top-color: transparent;
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  .subscribe-note {
-    margin-top: 12px;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-muted);
-  }
-
-  .subscribe-note.success { color: var(--green); }
-  .subscribe-note.error { color: #ff5f56; }
-
   /* ---- SOURCES ---- */
   .sources {
-    padding: 60px 0;
+    padding: 70px 0;
     border-top: 1px solid var(--border);
   }
 
@@ -319,32 +321,34 @@
     font-size: 11px;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 32px;
+    letter-spacing: 3px;
+    margin-bottom: 28px;
   }
 
   .source-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
   }
 
   .source-card {
     background: var(--bg-elevated);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 16px 20px;
+    border-radius: 8px;
+    padding: 18px 20px;
     font-family: var(--mono);
     font-size: 13px;
-    transition: all 0.2s;
+    transition: all 0.25s;
     display: flex;
     align-items: center;
     gap: 12px;
   }
 
   .source-card:hover {
-    border-color: var(--cyan-dim);
+    border-color: var(--cyan-glow);
     background: var(--bg-card);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,204,255,0.08);
   }
 
   .source-indicator {
@@ -353,6 +357,7 @@
     border-radius: 50%;
     background: var(--cyan);
     flex-shrink: 0;
+    box-shadow: 0 0 6px var(--cyan-glow);
     animation: pulse-dot 3s ease-in-out infinite;
   }
 
@@ -371,21 +376,20 @@
 
   /* ---- HOW IT WORKS ---- */
   .how-it-works {
-    padding: 60px 0;
+    padding: 70px 0;
     border-top: 1px solid var(--border);
   }
 
   .steps {
     display: flex;
     flex-direction: column;
-    gap: 0;
   }
 
   .step {
     display: grid;
-    grid-template-columns: 48px 1fr;
+    grid-template-columns: 56px 1fr;
     gap: 20px;
-    padding: 24px 0;
+    padding: 28px 0;
     border-bottom: 1px solid var(--border);
   }
 
@@ -393,66 +397,72 @@
 
   .step-number {
     font-family: var(--mono);
-    font-size: 32px;
+    font-size: 36px;
     font-weight: 700;
-    color: var(--text-muted);
+    color: var(--border);
     line-height: 1;
   }
 
   .step-content h3 {
     font-family: var(--mono);
     font-size: 16px;
-    font-weight: 500;
-    margin-bottom: 6px;
+    font-weight: 600;
+    margin-bottom: 8px;
     color: var(--text);
   }
 
   .step-content p {
     font-size: 14px;
     color: var(--text-dim);
-    line-height: 1.6;
+    line-height: 1.7;
   }
 
   .step-content .tag {
     display: inline-block;
-    padding: 2px 8px;
+    padding: 3px 10px;
     background: var(--cyan-dim);
     color: var(--cyan);
     font-family: var(--mono);
-    font-size: 11px;
-    border-radius: 3px;
-    margin-top: 8px;
+    font-size: 10px;
+    font-weight: 500;
+    border-radius: 4px;
+    margin-top: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
 
   /* ---- SAMPLE DIGEST ---- */
   .sample {
-    padding: 60px 0;
+    padding: 70px 0;
     border-top: 1px solid var(--border);
   }
 
   .sample-digest {
     background: var(--bg-elevated);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 32px;
+    border-radius: 10px;
+    padding: 36px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
   }
 
   .sample-digest h3 {
     font-family: var(--mono);
-    font-size: 14px;
+    font-size: 13px;
     color: var(--cyan);
-    margin-top: 24px;
-    margin-bottom: 12px;
-    padding-bottom: 6px;
+    margin-top: 28px;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
     border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
 
   .sample-digest h3:first-child { margin-top: 0; }
 
   .sample-item {
-    padding: 8px 0;
+    padding: 10px 0;
     font-size: 13px;
-    line-height: 1.6;
+    line-height: 1.7;
   }
 
   .sample-item .title {
@@ -464,11 +474,13 @@
     font-family: var(--mono);
     font-size: 11px;
     color: var(--text-muted);
+    margin-top: 2px;
   }
 
   .sample-item .summary {
     color: var(--text-dim);
     font-size: 13px;
+    margin-top: 4px;
   }
 
   /* ---- FOOTER ---- */
@@ -508,12 +520,14 @@
 
   /* ---- RESPONSIVE ---- */
   @media (max-width: 600px) {
-    .hero { padding: 48px 0 40px; }
-    .source-grid { grid-template-columns: 1fr; }
-    .step { grid-template-columns: 36px 1fr; gap: 12px; }
+    .hero { padding: 60px 0 40px; }
+    .source-grid { grid-template-columns: 1fr 1fr; }
+    .step { grid-template-columns: 40px 1fr; gap: 12px; }
     .step-number { font-size: 24px; }
     .footer-content { flex-direction: column; align-items: flex-start; }
     .sample-digest { padding: 20px; }
+    .subscribe-form { flex-direction: column; }
+    .subscribe-btn { width: 100%; justify-content: center; }
   }
 </style>
 </head>
@@ -521,42 +535,26 @@
 
 <nav>
   <div class="container">
-    <div class="logo">ai<span>.</span>digest</div>
+    <div class="logo">AI<span> Digest</span></div>
     <div class="nav-email">aidigest@inkboxmail.com</div>
   </div>
 </nav>
 
 <section class="hero">
+  <div class="hero-glow"></div>
   <div class="container">
     <div class="terminal-label">live agent</div>
     <h1>AI news.<br>Not <span class="highlight">noise</span>.</h1>
     <p class="hero-description">
       We scrape <strong>6 AI subreddits</strong> daily, filter out the noise,
-      and have <strong>Claude</strong> summarize what actually matters.
-      Delivered to your inbox. No doomscrolling required.
+      and have <strong>AI</strong> summarize what actually matters.
+      One email, every morning. No doomscrolling.
     </p>
   </div>
 </section>
 
 <section class="cta-section">
   <div class="container">
-    <div class="terminal-box">
-      <div class="terminal-header">
-        <div class="terminal-dot"></div>
-        <div class="terminal-dot"></div>
-        <div class="terminal-dot"></div>
-        <span class="terminal-title">ai-digest — subscribe</span>
-      </div>
-      <div class="terminal-body">
-        <div class="terminal-line"><span class="prompt">$</span> ai-digest <span class="flag">--subscribe</span></div>
-        <div class="terminal-line"><span class="output">Scanning r/LocalLLaMA, r/MachineLearning, r/artificial...</span></div>
-        <div class="terminal-line"><span class="output">Found 37 posts. Filtering noise...</span></div>
-        <div class="terminal-line"><span class="output">Summarizing top 12 with Claude...</span></div>
-        <div class="terminal-line"><span class="success">&#10003; Digest ready. Delivering to inbox.</span></div>
-        <div class="terminal-line"><span class="comment"># email aidigest@inkboxmail.com to subscribe</span></div>
-      </div>
-    </div>
-
     <form id="subscribe-form" class="subscribe-form">
       <input type="email" id="email-input" placeholder="you@email.com" required autocomplete="email">
       <button type="submit" class="subscribe-btn">Subscribe</button>
@@ -565,9 +563,29 @@
   </div>
 </section>
 
+<section class="terminal-section">
+  <div class="container">
+    <div class="terminal-box">
+      <div class="terminal-header">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <span class="terminal-title">aidigest — daily run</span>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-line"><span class="prompt">$</span> aidigest <span class="flag">--run</span></div>
+        <div class="terminal-line"><span class="output">Scanning r/LocalLLaMA, r/MachineLearning, r/artificial...</span></div>
+        <div class="terminal-line"><span class="output">Found 37 posts. Filtering noise... Summarizing top 12...</span></div>
+        <div class="terminal-line"><span class="success">&#10003; Digest ready. Delivering to all subscribers.</span></div>
+        <div class="terminal-line"><span class="comment"># runs once daily, or on new subscriber signup</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="sources">
   <div class="container">
-    <div class="section-label">Sources</div>
+    <div class="section-label">Sources we monitor</div>
     <div class="source-grid">
       <div class="source-card">
         <div class="source-indicator"></div>
@@ -611,7 +629,7 @@
         <div class="step-number">01</div>
         <div class="step-content">
           <h3>Scrape</h3>
-          <p>Every 6 hours, we pull the top posts from 6 AI subreddits. Filter out memes, reposts, and low-effort content.</p>
+          <p>Every day, we pull the top posts from 6 AI subreddits. Filter out memes, reposts, and low-effort content.</p>
           <span class="tag">automated</span>
         </div>
       </div>
@@ -619,15 +637,15 @@
         <div class="step-number">02</div>
         <div class="step-content">
           <h3>Summarize</h3>
-          <p>Claude reads every post, ranks by importance, groups by category, and writes concise summaries you can scan in 2 minutes.</p>
-          <span class="tag">claude</span>
+          <p>AI reads every post, ranks by importance, groups by category, and writes concise summaries you can scan in 2 minutes.</p>
+          <span class="tag">gemini</span>
         </div>
       </div>
       <div class="step">
         <div class="step-number">03</div>
         <div class="step-content">
           <h3>Deliver</h3>
-          <p>A clean, formatted digest lands in your inbox. Links to every source. Read it on your phone over coffee.</p>
+          <p>A clean, formatted digest lands in your inbox every morning. Links to every source. Read it on your phone over coffee.</p>
           <span class="tag">inkbox</span>
         </div>
       </div>
@@ -642,26 +660,26 @@
       <h3>Models &amp; Releases</h3>
       <div class="sample-item">
         <div class="title">Llama 4 Scout beats GPT-4o on coding benchmarks</div>
-        <div class="meta">r/LocalLLaMA &middot; 2.4k pts</div>
+        <div class="meta">r/LocalLLaMA &middot; 2.4k pts &middot; 340 comments</div>
         <div class="summary">New 17B model runs on consumer GPUs with 10M context window. GGUF quantizations already available on HuggingFace.</div>
       </div>
       <div class="sample-item">
         <div class="title">Mistral releases Codestral 2 under Apache 2.0</div>
-        <div class="meta">r/MachineLearning &middot; 1.8k pts</div>
+        <div class="meta">r/MachineLearning &middot; 1.8k pts &middot; 210 comments</div>
         <div class="summary">Open-weight code model outperforms previous generation by 23% on HumanEval. Full fine-tuning supported.</div>
       </div>
 
       <h3>Research &amp; Papers</h3>
       <div class="sample-item">
         <div class="title">New attention mechanism replaces softmax, 40% faster inference</div>
-        <div class="meta">r/MachineLearning &middot; 3.1k pts</div>
+        <div class="meta">r/MachineLearning &middot; 3.1k pts &middot; 480 comments</div>
         <div class="summary">Follow-up paper from original Transformer authors proposes linear attention variant with comparable quality.</div>
       </div>
 
       <h3>Tools &amp; Libraries</h3>
       <div class="sample-item">
         <div class="title">llama.cpp adds speculative decoding — 2x inference speed</div>
-        <div class="meta">r/LocalLLaMA &middot; 890 pts</div>
+        <div class="meta">r/LocalLLaMA &middot; 890 pts &middot; 125 comments</div>
         <div class="summary">Latest release supports draft models for speculative decoding on all GGUF quantizations.</div>
       </div>
     </div>
@@ -671,11 +689,11 @@
 <footer>
   <div class="container">
     <div class="footer-content">
-      <div class="footer-left">Scraped from Reddit. Summarized by Claude. Delivered by Inkbox.</div>
+      <div class="footer-left">Scraped from Reddit. Summarized by Gemini. Delivered by Inkbox.</div>
       <div class="footer-links">
-        <a href="mailto:aidigest@inkboxmail.com?subject=subscribe&body=Subscribe%20me%20to%20AI%20Digest">subscribe</a>
+        <a href="mailto:aidigest@inkboxmail.com?subject=subscribe">subscribe</a>
         <a href="mailto:aidigest@inkboxmail.com?subject=stop">unsubscribe</a>
-        <a href="https://github.com/bradAGI/the-factory">github</a>
+        <a href="https://github.com/bradAGI/ai-digest">github</a>
       </div>
     </div>
   </div>
@@ -701,7 +719,7 @@ document.getElementById('subscribe-form').addEventListener('submit', async (e) =
     });
     const data = await resp.json();
     if (resp.ok) {
-      status.textContent = '✓ Subscribed! Check your inbox for a welcome email.';
+      status.textContent = '\u2713 Subscribed! Check your inbox for today\'s digest.';
       status.className = 'subscribe-note success';
       input.value = '';
     } else {
