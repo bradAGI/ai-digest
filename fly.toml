@@ -1,4 +1,4 @@
-app = 'ai-digest-bot'
+app = 'aidigest'
 primary_region = 'ewr'
 
 [build]
